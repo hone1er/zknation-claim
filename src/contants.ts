@@ -1,9 +1,11 @@
 import { readInterface } from "@/utils";
 
 export const L2_MERKLE_DISTRIBUTOR_INTERFACE = readInterface(
-  "abi/MERKLE_DISTRIBUTOR_ABI.json",
+  "./public/abi/MERKLE_DISTRIBUTOR_ABI.json",
 );
-export const L1_BRIDGE_HUB_INTERFACE = readInterface("abi/BRIDGE_HUB_ABI.json");
+export const L1_BRIDGE_HUB_INTERFACE = readInterface(
+  "./public/abi/BRIDGE_HUB_ABI.json",
+);
 
 export const L1_BRIDGE_HUB_ADDRESS =
   "0x303a465B659cBB0ab36eE643eA362c509EEb5213";
