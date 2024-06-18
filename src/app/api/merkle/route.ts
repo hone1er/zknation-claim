@@ -19,8 +19,10 @@ export async function POST(req: Request) {
   const { command, address, l1GasPrice, l1JsonRpc } = body;
 
   try {
-    const allocation = await readCSV("./public/airdrop-allocations.csv");
-    const l1EligibilityList = await readCSV("./public/l1_eligibility_list.csv");
+    const allocation = await readCSV("../../public/airdrop-allocations.csv");
+    const l1EligibilityList = await readCSV(
+      "../../public/l1_eligibility_list.csv",
+    );
     const { leavesBuffs, tree } = constructMerkleTree(
       allocation,
       l1EligibilityList,
