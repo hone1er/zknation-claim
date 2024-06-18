@@ -25,6 +25,18 @@ import { BRIDGEHUB_ABI } from "zksync-ethers/build/utils";
 import { type BigNumberish } from "ethers";
 import { utils } from "zksync-ethers";
 
+export async function readCSVFromStream(data: string): Promise<string[][]> {
+  return new Promise((resolve, reject) => {
+    parse(data, { columns: false }, (error, records: string[][]) => {
+      if (error) {
+        reject("Error parsing the CSV file: " + error);
+        return;
+      }
+      resolve(records);
+    });
+  });
+}
+
 // export function cn(...inputs: ClassValue[]) {
 //   return twMerge(clsx(inputs));
 // }

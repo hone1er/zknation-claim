@@ -4,12 +4,76 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { isAddress } from "ethers";
+import { useAccount, useWriteContract } from "wagmi";
+import { Account, WalletOptions } from "@/composed/Connect";
+import { BRIDGE_HUB_ABI } from "public/abi/BRIDGE_HUB_ABI";
+import { ZKSYNC_MAIN_ABI } from "zksync-ethers/build/utils";
+interface CallData {
+  payableAmount: string; // ether
+
+  chainId: number;
+  mintValue: string;
+  l2Contract: string;
+  l2Value: number;
+  l2Calldata: string;
+  l2GasLimit: number;
+  l2GasPerPubdataByteLimit: number;
+  factoryDeps: string[];
+  refundRecipient: string;
+}
 
 export default function Component() {
   const [address, setAddress] = useState("");
   const [eligibilityMessage, setEligibilityMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [rawData, setRawData] = useState({});
+  const [callData, setCallData] = useState<{
+    function: string;
+    gas_price: string;
+    l1_raw_calldata: string;
+    params: CallData;
+  } | null>(null);
+
+  const { writeContractAsync } = useWriteContract();
+  console.log("🚀 ~ callData:", callData);
+  async function handleApprove() {
+    if (!callData) return;
+
+    const result = await writeContractAsync({
+      address: "0x66Fd4FC8FA52c9bec2AbA368047A0b27e24ecfe4",
+      abi: ZKSYNC_MAIN_ABI,
+      functionName: "approve",
+      args: [
+        "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
+        callData.params.mintValue,
+      ],
+    });
+  }
+
+  async function handleClaim() {
+    if (!callData) return;
+
+    const result = await writeContractAsync({
+      address: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
+      abi: BRIDGE_HUB_ABI,
+      functionName: callData.function,
+      args: [
+        [
+          callData.params.chainId,
+          callData.params.mintValue,
+          callData.params.l2Contract,
+          callData.params.l2Value,
+          callData.params.l2Calldata,
+          callData.params.l2GasLimit,
+          callData.params.l2GasPerPubdataByteLimit,
+          callData.params.factoryDeps,
+          callData.params.refundRecipient,
+        ],
+      ],
+      value: BigInt(callData.gas_price),
+    });
+    console.log("🚀 ~ handleClaim ~ result:", result);
+  }
 
   async function handleCheckEligibility(
     event: React.FormEvent<HTMLFormElement>,
@@ -41,6 +105,7 @@ export default function Component() {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const data = await result.json();
       setRawData(data as unknown as Record<string, unknown>);
+      setCallData(data?.call_to_claim);
       setEligibilityMessage("Address is eligible for the airdrop");
       console.log(data);
     } catch (error) {
@@ -52,43 +117,46 @@ export default function Component() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-500 px-4 py-8">
-      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
-        <h1 className="mb-6 text-center text-3xl font-bold">
-          Claim Your Airdrop
-        </h1>
-        <p className="mb-8 text-center text-gray-600">
-          Enter your Ethereum address below to claim your airdrop.
-        </p>
-        <form onSubmit={handleCheckEligibility}>
-          <div className="mb-6 flex items-center">
-            <Input
-              type="text"
-              placeholder="Enter your Ethereum address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="flex-1 rounded-l-md border-r-0 focus:border-indigo-500 focus:ring-indigo-500"
-            />
-            <Button disabled={loading} type="submit" className="rounded-r-md">
-              Claim
-            </Button>
-          </div>
-        </form>
-        <p className="text-center text-sm text-gray-500">
-          By clicking &apos;Claim&apos;, you agree to our{" "}
-          <Link
-            href="#"
-            className="text-indigo-500 hover:underline"
-            prefetch={false}
-          >
-            terms and conditions
-          </Link>
-          .
-        </p>
-        {eligibilityMessage && (
-          <p className="text-center text-green-500">{eligibilityMessage}</p>
-        )}
+      <div className="flex max-w-2xl flex-col gap-8">
+        {" "}
+        <ConnectWallet />
+        <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
+          <h1 className="mb-6 text-center text-3xl font-bold">
+            Claim Your Airdrop
+          </h1>
+          <p className="mb-8 text-center text-gray-600">
+            Enter your Ethereum address below to claim your airdrop.
+          </p>
+          <form onSubmit={handleCheckEligibility}>
+            <div className="mb-6 flex items-center">
+              <Input
+                type="text"
+                placeholder="Enter your Ethereum address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="flex-1 rounded-l-md border-r-0 focus:border-indigo-500 focus:ring-indigo-500"
+              />
+              <Button disabled={loading} type="submit" className="rounded-r-md">
+                Claim
+              </Button>
+            </div>
+          </form>
+          <p className="text-center text-sm text-gray-500">
+            By clicking &apos;Claim&apos;, you agree to our{" "}
+            <Link
+              href="#"
+              className="text-indigo-500 hover:underline"
+              prefetch={false}
+            >
+              terms and conditions
+            </Link>
+            .
+          </p>
+          {eligibilityMessage && (
+            <p className="text-center text-green-500">{eligibilityMessage}</p>
+          )}
+        </div>
       </div>
-
       {/* 
 example raw data value:
 {call_to_claim: {      
@@ -148,8 +216,14 @@ value
               </pre>
             </div>
           ))}
+          <Button onClick={handleClaim}>Claim</Button>
         </div>
       ) : null}
     </div>
   );
+}
+function ConnectWallet() {
+  const { isConnected } = useAccount();
+  if (isConnected) return <Account />;
+  return <WalletOptions />;
 }
