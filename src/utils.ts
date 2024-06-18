@@ -150,7 +150,7 @@ export function readCSV(filePath: string): Promise<string[][]> {
     });
 
     // Create a read stream from the file and pipe it to the parser
-    createReadStream(`${process.cwd()}/` + filePath).pipe(parser);
+    createReadStream(filePath).pipe(parser);
   });
 }
 
