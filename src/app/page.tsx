@@ -28,7 +28,7 @@ export default function Component() {
         body: JSON.stringify({
           command: "generate-l1-contract-claim-tx",
           address,
-          l1GasPrice: "10",
+          l1GasPrice: "30",
           l1JsonRpc: "https://eth.llamarpc.com",
         }),
       });
