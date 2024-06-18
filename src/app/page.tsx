@@ -28,7 +28,7 @@ export default function Component() {
           command: "generate-l1-contract-claim-tx",
           address,
           l1GasPrice: "10",
-          l1JsonRpc: "https://mainnet.infura.io/v3/your-infura-id",
+          l1JsonRpc: "https://eth.llamarpc.com",
         }),
       });
 
