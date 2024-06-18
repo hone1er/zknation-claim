@@ -7,7 +7,6 @@ import { isAddress } from "ethers";
 import { useAccount, useWriteContract } from "wagmi";
 import { Account, WalletOptions } from "@/composed/Connect";
 import { BRIDGE_HUB_ABI } from "public/abi/BRIDGE_HUB_ABI";
-import { ZKSYNC_MAIN_ABI } from "zksync-ethers/build/utils";
 interface CallData {
   payableAmount: string; // ether
 
@@ -31,24 +30,11 @@ export default function Component() {
     function: string;
     gas_price: string;
     l1_raw_calldata: string;
+    value: string;
     params: CallData;
   } | null>(null);
 
   const { writeContractAsync } = useWriteContract();
-  console.log("🚀 ~ callData:", callData);
-  async function handleApprove() {
-    if (!callData) return;
-
-    const result = await writeContractAsync({
-      address: "0x66Fd4FC8FA52c9bec2AbA368047A0b27e24ecfe4",
-      abi: ZKSYNC_MAIN_ABI,
-      functionName: "approve",
-      args: [
-        "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
-        callData.params.mintValue,
-      ],
-    });
-  }
 
   async function handleClaim() {
     if (!callData) return;
@@ -70,7 +56,7 @@ export default function Component() {
           callData.params.refundRecipient,
         ],
       ],
-      value: BigInt(callData.gas_price),
+      value: BigInt(callData.value),
     });
     console.log("🚀 ~ handleClaim ~ result:", result);
   }
@@ -105,6 +91,7 @@ export default function Component() {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const data = await result.json();
       setRawData(data as unknown as Record<string, unknown>);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
       setCallData(data?.call_to_claim);
       setEligibilityMessage("Address is eligible for the airdrop");
       console.log(data);
