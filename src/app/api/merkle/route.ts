@@ -27,7 +27,17 @@ export async function POST(req: Request) {
     );
 
     if (command === "generate-l2-contract-claim-tx") {
-      const l2ClaimData = getL2ClaimData(tree, leavesBuffs, address, false);
+      const l2ClaimData = getL2ClaimData(
+        tree,
+        leavesBuffs as unknown as {
+          hashBuffer: Buffer;
+          address: string;
+          index: number;
+          amount: number;
+        }[],
+        address,
+        false,
+      );
       return new Response(JSON.stringify(l2ClaimData));
     } else if (command === "generate-l1-contract-claim-tx") {
       if (!l1GasPrice) {
@@ -46,7 +56,12 @@ export async function POST(req: Request) {
       const aliasedAddress = utils.applyL1ToL2Alias(address);
       const l2ClaimData = await getL2ClaimData(
         tree,
-        leavesBuffs,
+        leavesBuffs as unknown as {
+          hashBuffer: Buffer;
+          address: string;
+          index: number;
+          amount: number;
+        }[],
         aliasedAddress,
         true,
       );

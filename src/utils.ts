@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
+/* eslint-disable @typescript-eslint/no-base-to-string */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ethers, solidityPackedKeccak256 } from "ethers";
 import { createReadStream } from "fs";
 import { parse } from "csv-parse";
@@ -140,7 +144,7 @@ export function readCSV(filePath: string): Promise<string[][]> {
 
       // Skip the header row and store the rest in the "values" array with the row index
       for (let i = 1; i < records.length; i++) {
-        values.push(records[i]);
+        values.push(records[i]!);
       }
       resolve(values);
     });
@@ -168,12 +172,7 @@ export function constructMerkleTree(
     }
   }
 
-  const leaves: {
-    hashBuffer: Buffer;
-    address: string;
-    index: number;
-    amount: number;
-  }[] = addresses.map((allocation, i) => ({
+  const leaves = addresses.map((allocation, i) => ({
     hashBuffer: Buffer.from(
       solidityPackedKeccak256(
         ["uint256", "address", "uint256"],
