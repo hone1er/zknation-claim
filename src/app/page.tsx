@@ -133,7 +133,7 @@ export default function Component() {
                 className="flex-1 rounded-l-md border-r-0 focus:border-indigo-500 focus:ring-indigo-500"
               />
               <Button disabled={loading} type="submit" className="rounded-r-md">
-                Claim
+                Check Eligibility
               </Button>
             </div>
           </form>
