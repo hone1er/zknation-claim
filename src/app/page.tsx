@@ -9,6 +9,7 @@ export default function Component() {
   const [address, setAddress] = useState("");
   const [eligibilityMessage, setEligibilityMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [rawData, setRawData] = useState({});
 
   async function handleCheckEligibility(
     event: React.FormEvent<HTMLFormElement>,
@@ -39,6 +40,7 @@ export default function Component() {
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const data = await result.json();
+      setRawData(data as unknown as Record<string, unknown>);
       setEligibilityMessage("Address is eligible for the airdrop");
       console.log(data);
     } catch (error) {
