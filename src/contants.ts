@@ -1,11 +1,8 @@
-import { readInterface } from "@/utils";
-
-export const L2_MERKLE_DISTRIBUTOR_INTERFACE = readInterface(
-  "../public/abi/MERKLE_DISTRIBUTOR_ABI.json",
-);
-export const L1_BRIDGE_HUB_INTERFACE = readInterface(
-  "../public/abi/BRIDGE_HUB_ABI.json",
-);
+import { MERKLE_ABI } from "../public/abi/MERKLE_DISTRIBUTOR_ABI";
+import { BRIDGE_HUB_ABI } from "../public/abi/BRIDGE_HUB_ABI";
+import { ethers } from "ethers";
+export const L2_MERKLE_DISTRIBUTOR_INTERFACE = new ethers.Interface(MERKLE_ABI);
+export const L1_BRIDGE_HUB_INTERFACE = new ethers.Interface(BRIDGE_HUB_ABI);
 
 export const L1_BRIDGE_HUB_ADDRESS =
   "0x303a465B659cBB0ab36eE643eA362c509EEb5213";
