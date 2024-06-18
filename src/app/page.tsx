@@ -39,26 +39,35 @@ export default function Component() {
   async function handleClaim() {
     if (!callData) return;
 
-    const result = await writeContractAsync({
-      address: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
-      abi: BRIDGE_HUB_ABI,
-      functionName: callData.function,
-      args: [
-        [
-          callData.params.chainId,
-          callData.params.mintValue,
-          callData.params.l2Contract,
-          callData.params.l2Value,
-          callData.params.l2Calldata,
-          callData.params.l2GasLimit,
-          callData.params.l2GasPerPubdataByteLimit,
-          callData.params.factoryDeps,
-          callData.params.refundRecipient,
+    const result = await writeContractAsync(
+      {
+        address: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
+        abi: BRIDGE_HUB_ABI,
+        functionName: callData.function,
+        args: [
+          [
+            callData.params.chainId,
+            callData.params.mintValue,
+            callData.params.l2Contract,
+            callData.params.l2Value,
+            callData.params.l2Calldata,
+            callData.params.l2GasLimit,
+            callData.params.l2GasPerPubdataByteLimit,
+            callData.params.factoryDeps,
+            callData.params.refundRecipient,
+          ],
         ],
-      ],
-      value: BigInt(callData.value),
-    });
-    console.log("🚀 ~ handleClaim ~ result:", result);
+        value: BigInt(callData.value),
+      },
+      {
+        onSuccess: (hash: string) => {
+          alert(`Transaction sent. Hash: ${hash}`);
+        },
+        onError: (error: Error) => {
+          alert(`Error: ${error.message}`);
+        },
+      },
+    );
   }
 
   async function handleCheckEligibility(
