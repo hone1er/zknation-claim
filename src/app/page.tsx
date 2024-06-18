@@ -7,6 +7,7 @@ import { isAddress } from "ethers";
 import { useAccount, useWriteContract } from "wagmi";
 import { Account, WalletOptions } from "@/composed/Connect";
 import { BRIDGE_HUB_ABI } from "public/abi/BRIDGE_HUB_ABI";
+import { Tip } from "@/composed/Tip"
 interface CallData {
   payableAmount: string; // ether
 
@@ -20,6 +21,7 @@ interface CallData {
   factoryDeps: string[];
   refundRecipient: string;
 }
+
 
 export default function Component() {
   const [address, setAddress] = useState("");
@@ -87,7 +89,7 @@ export default function Component() {
         body: JSON.stringify({
           command: "generate-l1-contract-claim-tx",
           address,
-          l1GasPrice: "30",
+          l1GasPrice: "10",
           l1JsonRpc: "https://eth.llamarpc.com",
         }),
       });
@@ -152,6 +154,7 @@ export default function Component() {
             <p className="text-center text-green-500">{eligibilityMessage}</p>
           )}
         </div>
+        <Tip/>
       </div>
       {/* 
 example raw data value:
