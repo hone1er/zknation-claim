@@ -35,7 +35,6 @@ interface CallData {
 }
 
 export default function Component() {
-  const [address, setAddress] = useState("");
   const [eligibilityMessage, setEligibilityMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [rawData, setRawData] = useState({});
@@ -60,6 +59,13 @@ export default function Component() {
     ensAddy,
     ensAvatar,
     handleToAddressInput,
+  } = useEns();
+  const {
+    rawTokenAddress: address,
+    isValidToAddress: isValidEligibilityAddress,
+    ensAddy: ensEligibilityAddy,
+    ensAvatar: ensEligibilityAvatar,
+    handleToAddressInput: handleEligibilityToAddressInput,
   } = useEns();
   const { writeContractAsync } = useWriteContract();
 
@@ -101,6 +107,8 @@ export default function Component() {
     event: React.FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
+    setError("");
+    setEligibilityMessage("");
     setLoading(true);
     try {
       const allocation = await readCSVFromUrl("/airdrop-allocations.csv");
@@ -191,6 +199,7 @@ export default function Component() {
             params: CallData;
           },
         );
+        setEligibilityMessage("Eligible for airdrop");
       } else {
         setError("Invalid command");
       }
@@ -215,12 +224,14 @@ export default function Component() {
           </p>
           <form onSubmit={handleGenerateClaimData}>
             <div className="mb-6 flex w-full flex-col items-end gap-4">
-              <Input
-                type="text"
-                placeholder="Enter your Ethereum address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="min-h-10 rounded-l-md border-r-0 px-4 py-2 focus:border-indigo-500 focus:ring-indigo-500"
+              <EnsInputField
+                disabled={false}
+                placeholder="Eligibility Address"
+                rawTokenAddress={address}
+                isValidToAddress={isValidEligibilityAddress}
+                ensAddy={ensEligibilityAddy as string}
+                ensAvatar={ensEligibilityAvatar!}
+                onChange={handleEligibilityToAddressInput}
               />
               {/* checkbox to enable/disable otherRecipient */}
               <div className="mb-4 flex w-full flex-col items-start gap-2">
@@ -236,6 +247,7 @@ export default function Component() {
                 </div>
                 {otherRecipient ? (
                   <EnsInputField
+                    placeholder="Recipient Address"
                     disabled={false}
                     rawTokenAddress={refundRecipient}
                     isValidToAddress={isValidToAddress}
@@ -260,6 +272,9 @@ export default function Component() {
                 Create claim data
               </Button>
             </div>
+            {error ? (
+              <p className="mb-4 text-center text-xs text-red-500">{error}</p>
+            ) : null}
           </form>
 
           {/* <p className="text-center text-sm text-gray-500">

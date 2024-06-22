@@ -10,6 +10,7 @@ interface EnsInputFieldProps {
   ensAddy: string;
   ensAvatar: string;
   onChange: (address: string) => void;
+  placeholder?: string;
 }
 
 const EnsInputField = ({
@@ -19,13 +20,14 @@ const EnsInputField = ({
   ensAddy,
   ensAvatar,
   onChange,
+  placeholder,
 }: EnsInputFieldProps) => (
   <div
-    className={`duration-400 w-full relative flex min-w-80 flex-col gap-2 transition-all ${ensAddy ? "h-[106px] rounded-b-[8px]" : "h-[48px] rounded-b-[48px]"}`}
+    className={`duration-400 relative flex w-full min-w-80 flex-col gap-2 transition-all ${ensAddy ? "h-[106px] rounded-b-[8px]" : "h-[48px] rounded-b-[48px]"}`}
   >
     <Input
       type="text"
-      placeholder="0x..."
+      placeholder={placeholder ? placeholder : "0x..."}
       disabled={disabled}
       className={`relative z-40 min-h-10 w-full bg-white ${rawTokenAddress.length > 0 && isValidToAddress ? "border-green-500" : rawTokenAddress.length > 0 && !isValidToAddress ? "border-red-500" : "border-auto"} rounded-t-[8px]  px-4 py-2 transition-all duration-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
       value={rawTokenAddress}
