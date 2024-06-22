@@ -2,8 +2,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount, useGasPrice, useWriteContract } from "wagmi";
 import { Account, WalletOptions } from "@/composed/Connect";
 import { BRIDGE_HUB_ABI } from "public/abi/BRIDGE_HUB_ABI";
 import { Tip } from "@/composed/Tip";
@@ -11,7 +10,6 @@ import EnsInputField from "@/composed/EnsInputField";
 import { useEns } from "@/hooks/useEns";
 import { Label } from "@/components/ui/label";
 import { getDefaultProvider, JsonRpcProvider } from "ethers";
-import { parseUnits } from "ethers";
 import { utils } from "zksync-ethers";
 import {
   constructMerkleTree,
@@ -39,9 +37,10 @@ export default function Component() {
   const [loading, setLoading] = useState(false);
   const [rawData, setRawData] = useState({});
   const [otherRecipient, setOtherRecipient] = useState(false);
+  const { data: l1GasPrice } = useGasPrice({ chainId: 1 });
 
   const [command, setCommand] = useState("generate-l1-contract-claim-tx");
-  const [l1GasPrice, setL1GasPrice] = useState("");
+
   const [l1JsonRpc, setL1JsonRpc] = useState("https://eth.llamarpc.com");
   const [error, setError] = useState("");
   const [callData, setCallData] = useState<{
@@ -52,7 +51,6 @@ export default function Component() {
     params: CallData;
   } | null>(null);
 
-  console.log("🚀 ~ callData:", callData);
   const {
     rawTokenAddress: refundRecipient,
     isValidToAddress,
@@ -146,7 +144,8 @@ export default function Component() {
           setError("Missing required parameter: l1GasPrice");
           return;
         }
-        const gasPrice = parseUnits(l1GasPrice, "gwei").toString();
+        const gasPrice = (l1GasPrice / 1000000000n + 1n).toString();
+
         const l1Provider = l1JsonRpc
           ? new JsonRpcProvider(l1JsonRpc)
           : getDefaultProvider("mainnet");
@@ -188,7 +187,7 @@ export default function Component() {
           address,
           call_to_claim: l1TxData,
         };
-        console.log(finalData);
+
         setRawData(finalData);
         setCallData(
           finalData.call_to_claim as unknown as {
@@ -257,13 +256,7 @@ export default function Component() {
                   />
                 ) : null}
               </div>
-              <Input
-                type="text"
-                placeholder="L1 Gas Price"
-                value={l1GasPrice}
-                onChange={(e) => setL1GasPrice(e.target.value)}
-                className="min-h-10 rounded-l-md border-r-0 px-4 py-2 focus:border-indigo-500 focus:ring-indigo-500"
-              />
+
               <Button
                 disabled={loading || !l1GasPrice || !address}
                 type="submit"

@@ -143,7 +143,6 @@ export function constructMerkleTree(
     }
   }
 
-  console.log("🚀 ~ addresses:", addresses);
   const leaves = addresses.map((allocation, i) => ({
     hashBuffer: Buffer.from(
       solidityPackedKeccak256(
