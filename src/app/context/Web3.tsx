@@ -1,16 +1,7 @@
 "use client";
 
-import { createWeb3Modal } from "@web3modal/wagmi/react";
 import { type State, WagmiProvider, createConfig, http } from "wagmi";
-import {
-  arbitrum,
-  base,
-  baseSepolia,
-  mainnet,
-  optimism,
-  polygon,
-  polygonAmoy,
-} from "wagmi/chains";
+import { base, mainnet, optimism, polygon, zkSync } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type PropsWithChildren } from "react";
 import {
@@ -42,7 +33,7 @@ const queryClient = new QueryClient();
 //   ssr: true,
 // });
 const config = createConfig({
-  chains: [polygon, base, mainnet, optimism],
+  chains: [polygon, base, mainnet, optimism, zkSync],
   connectors: [
     coinbaseWallet({ appName: "ZK Claim helper" }),
     walletConnect({
@@ -64,6 +55,7 @@ const config = createConfig({
     [optimism.id]: http(),
     [base.id]: http(),
     [mainnet.id]: http(),
+    [zkSync.id]: http(),
   },
 });
 

@@ -33,6 +33,7 @@ import PolygonLogo from "public/logos/polygon_logo";
 import OptimismLogo from "public/logos/optimism_logo";
 import BaseLogo from "public/logos/base_logo";
 import EthereumLogo from "public/logos/ethereum_logo";
+import ZKLogo from "public/logos/zk_logo";
 
 type Currency = {
   name: string;
@@ -118,6 +119,13 @@ const currencyMap: Record<number, Currency[]> = {
       address: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
     },
   ],
+  324: [
+    {
+      name: "ZK Sync",
+      symbol: "ZK",
+      address: "0x5A7d6b2F92C77FAD6CCaBd7EE0624E64907Eaf3E",
+    },
+  ],
 };
 
 export function Tip() {
@@ -140,6 +148,7 @@ export function TipDrawer({ className }: { className?: string }) {
     8453: <BaseLogo />,
     137: <PolygonLogo />,
     10: <OptimismLogo />,
+    324: <ZKLogo />,
   };
 
   const handleTransferERC20 = async (address: `0x${string}`) => {
