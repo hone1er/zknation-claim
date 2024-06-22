@@ -27,14 +27,14 @@ interface Props extends PropsWithChildren {
 // 0. Setup queryClient
 const queryClient = new QueryClient();
 
-const chains = [
-  baseSepolia,
-  base,
-  polygon,
-  polygonAmoy,
-  mainnet,
-  arbitrum,
-] as const;
+// const chains = [
+//   baseSepolia,
+//   base,
+//   polygon,
+//   polygonAmoy,
+//   mainnet,
+//   arbitrum,
+// ] as const;
 // const config = defaultWagmiConfig({
 //   chains,
 //   projectId: projectId,
@@ -44,9 +44,15 @@ const chains = [
 const config = createConfig({
   chains: [polygon, base, mainnet, optimism],
   connectors: [
-    coinbaseWallet({
-      appName: "Honefolio",
-      chainId: baseSepolia.id,
+    coinbaseWallet({ appName: "ZK Claim helper" }),
+    walletConnect({
+      projectId: process.env.NEXT_PUBLIC_PROJECT_ID ?? "",
+      metadata: {
+        name: "ZK Claim helper",
+        description: "Community built tool to help you claim your ZK tokens.",
+        url: "https://zknation-claim.vercel.app",
+        icons: [],
+      },
     }),
     injected(),
     metaMask(),
