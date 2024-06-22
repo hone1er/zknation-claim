@@ -61,23 +61,29 @@ export function Account() {
   const { data: ensAvatar } = useEnsAvatar({ name: ensName! });
 
   return (
-    <div className="flex w-full flex-col justify-end">
+    <div className="flex w-full flex-col justify-center gap-4 place-self-end rounded-lg bg-slate-100 p-4 pb-0 shadow-md md:p-4 md:px-[52px] md:pb-0">
+      {address && (
+        <div className="flex w-fit justify-center place-self-center rounded-lg border border-slate-900 p-4 shadow-md">
+          <p>
+            {" "}
+            Connected:{" "}
+            {ensName
+              ? `${ensName} (${truncateAddress(address)})`
+              : truncateAddress(address, 11)}
+          </p>
+        </div>
+      )}
       <Button
         size="sm"
-        className="min-w-40 place-self-end"
+        className="min-w-40 place-self-end shadow-md"
         onClick={() => disconnect()}
       >
         Disconnect
       </Button>
-      <div className="flex items-center gap-4">
+      <div className="flex w-full items-end gap-4">
         {ensAvatar && (
           <div className="relative h-12 w-12 overflow-hidden rounded-full md:h-16 md:w-16">
             <Image alt="ENS Avatar" fill src={ensAvatar} />
-          </div>
-        )}
-        {address && (
-          <div>
-            {ensName ? `${ensName} (${truncateAddress(address)})` : address}
           </div>
         )}
       </div>

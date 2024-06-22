@@ -262,7 +262,7 @@ export default function Component() {
             </div>
           </form>
 
-          <p className="text-center text-sm text-gray-500">
+          {/* <p className="text-center text-sm text-gray-500">
             By clicking &apos;Claim&apos;, you agree to our{" "}
             <Link
               href="#"
@@ -272,7 +272,7 @@ export default function Component() {
               terms and conditions
             </Link>
             .
-          </p>
+          </p> */}
           {eligibilityMessage && (
             <p className="text-center text-green-500">{eligibilityMessage}</p>
           )}
