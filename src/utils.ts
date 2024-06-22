@@ -1,17 +1,13 @@
-/* eslint-disable @typescript-eslint/restrict-plus-operands */
-/* eslint-disable @typescript-eslint/no-base-to-string */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { ethers, solidityPackedKeccak256 } from "ethers";
-import { createReadStream } from "fs";
-import { parse } from "csv-parse";
-import * as fs from "fs";
-
-// import { type ClassValue, clsx } from "clsx";
-// import { twMerge } from "tailwind-merge";
-
-import { type AbstractProvider, Contract, type JsonRpcProvider } from "ethers";
-
+/* eslint-disable @typescript-eslint/prefer-for-of */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+import {
+  type AbstractProvider,
+  Contract,
+  type JsonRpcProvider,
+  ethers,
+  solidityPackedKeccak256,
+} from "ethers";
+import { parse } from "csv-parse/browser/esm/sync"; // Importing the browser version of csv-parse
 import { MerkleTree } from "merkletreejs";
 import {
   DEFAULT_L2_TX_GAS_LIMIT,
@@ -25,21 +21,12 @@ import { BRIDGEHUB_ABI } from "zksync-ethers/build/utils";
 import { type BigNumberish } from "ethers";
 import { utils } from "zksync-ethers";
 
-export async function readCSVFromStream(data: string): Promise<string[][]> {
-  return new Promise((resolve, reject) => {
-    parse(data, { columns: false }, (error, records: string[][]) => {
-      if (error) {
-        reject("Error parsing the CSV file: " + error);
-        return;
-      }
-      resolve(records);
-    });
-  });
-}
+export async function readCSVFromUrl(url: string): Promise<string[][]> {
+  const response = await fetch(url);
+  const data = await response.text();
 
-// export function cn(...inputs: ClassValue[]) {
-//   return twMerge(clsx(inputs));
-// }
+  return parse(data, { columns: false });
+}
 
 export async function getL2ClaimData(
   tree: MerkleTree,
@@ -95,6 +82,7 @@ export async function getL2ClaimData(
     },
   };
 }
+
 export async function getL1TxInfo(
   l1Provider: JsonRpcProvider | AbstractProvider,
   to: string,
@@ -139,40 +127,11 @@ export async function getL1TxInfo(
   };
 }
 
-export function readInterface(path: string) {
-  const abi = JSON.parse(fs.readFileSync(path, { encoding: "utf-8" }));
-  return new ethers.Interface(abi);
-}
-
-// Function to read and parse the CSV file and return a Promise
-export function readCSV(filePath: string): Promise<string[][]> {
-  return new Promise((resolve, reject) => {
-    const values: string[][] = []; // Initialize an empty array to store the parsed data
-    const parser = parse({ columns: false }, (error, records: string[][]) => {
-      if (error) {
-        reject("Error parsing the CSV file: " + error);
-        return;
-      }
-
-      // Skip the header row and store the rest in the "values" array with the row index
-      for (let i = 1; i < records.length; i++) {
-        values.push(records[i]!);
-      }
-      resolve(values);
-    });
-
-    // Create a read stream from the file and pipe it to the parser
-    createReadStream(filePath).pipe(parser);
-  });
-}
-
 export function constructMerkleTree(
   addresses: string[][],
   l1SmartContractAddresses: string[][],
 ) {
-  // eslint-disable-next-line @typescript-eslint/prefer-for-of
   for (let i = 0; i < addresses.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/prefer-for-of
     for (let j = 0; j < l1SmartContractAddresses.length; j++) {
       if (
         addresses[i]?.[0]?.toLowerCase() ==
@@ -184,6 +143,7 @@ export function constructMerkleTree(
     }
   }
 
+  console.log("🚀 ~ addresses:", addresses);
   const leaves = addresses.map((allocation, i) => ({
     hashBuffer: Buffer.from(
       solidityPackedKeccak256(

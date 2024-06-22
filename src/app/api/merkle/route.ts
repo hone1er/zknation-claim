@@ -15,8 +15,9 @@ export async function POST(req: Request) {
     address: string;
     l1GasPrice: string;
     l1JsonRpc: string;
+    refundRecipient: string;
   };
-  const { command, address, l1GasPrice, l1JsonRpc } = body;
+  const { command, address, l1GasPrice, l1JsonRpc, refundRecipient } = body;
 
   try {
     const allocation = await readCSV("./public/airdrop-allocations.csv");
@@ -78,7 +79,7 @@ export async function POST(req: Request) {
         l1Provider,
         l2ClaimData.call_to_claim.to,
         l2ClaimData.call_to_claim.l2_raw_calldata,
-        address,
+        refundRecipient,
         gasPrice,
       );
       const finalData = {

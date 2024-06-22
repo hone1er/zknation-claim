@@ -3,11 +3,23 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { isAddress } from "ethers";
 import { useAccount, useWriteContract } from "wagmi";
 import { Account, WalletOptions } from "@/composed/Connect";
 import { BRIDGE_HUB_ABI } from "public/abi/BRIDGE_HUB_ABI";
-import { Tip } from "@/composed/Tip"
+import { Tip } from "@/composed/Tip";
+import EnsInputField from "@/composed/EnsInputField";
+import { useEns } from "@/hooks/useEns";
+import { Label } from "@/components/ui/label";
+import { getDefaultProvider, JsonRpcProvider } from "ethers";
+import { parseUnits } from "ethers";
+import { utils } from "zksync-ethers";
+import {
+  constructMerkleTree,
+  getL1TxInfo,
+  getL2ClaimData,
+  readCSVFromUrl,
+} from "@/utils";
+
 interface CallData {
   payableAmount: string; // ether
 
@@ -22,12 +34,17 @@ interface CallData {
   refundRecipient: string;
 }
 
-
 export default function Component() {
   const [address, setAddress] = useState("");
   const [eligibilityMessage, setEligibilityMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [rawData, setRawData] = useState({});
+  const [otherRecipient, setOtherRecipient] = useState(false);
+
+  const [command, setCommand] = useState("generate-l1-contract-claim-tx");
+  const [l1GasPrice, setL1GasPrice] = useState("");
+  const [l1JsonRpc, setL1JsonRpc] = useState("https://eth.llamarpc.com");
+  const [error, setError] = useState("");
   const [callData, setCallData] = useState<{
     function: string;
     gas_price: string;
@@ -36,6 +53,14 @@ export default function Component() {
     params: CallData;
   } | null>(null);
 
+  console.log("🚀 ~ callData:", callData);
+  const {
+    rawTokenAddress: refundRecipient,
+    isValidToAddress,
+    ensAddy,
+    ensAvatar,
+    handleToAddressInput,
+  } = useEns();
   const { writeContractAsync } = useWriteContract();
 
   async function handleClaim() {
@@ -72,46 +97,109 @@ export default function Component() {
     );
   }
 
-  async function handleCheckEligibility(
+  const handleGenerateClaimData = async (
     event: React.FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault(); // Prevent default form submission
+  ) => {
+    event.preventDefault();
     setLoading(true);
-
-    if (!isAddress(address)) {
-      alert("Invalid Ethereum address");
-      return;
-    }
     try {
-      // Check eligibility via API or server-side function
-      const result = await fetch("/api/merkle", {
-        method: "POST",
-        body: JSON.stringify({
-          command: "generate-l1-contract-claim-tx",
+      const allocation = await readCSVFromUrl("/airdrop-allocations.csv");
+      const l1EligibilityList = await readCSVFromUrl(
+        "/l1_eligibility_list.csv",
+      );
+      const { leavesBuffs, tree } = constructMerkleTree(
+        allocation,
+        l1EligibilityList,
+      );
+
+      if (command === "generate-l2-contract-claim-tx") {
+        const l2ClaimData = getL2ClaimData(
+          tree,
+          leavesBuffs.map(
+            (buff) =>
+              ({
+                hashBuffer: buff.hashBuffer,
+                address: buff.address,
+                index: buff.index,
+                amount: buff.amount,
+              }) as unknown as {
+                hashBuffer: Buffer;
+                address: string;
+                index: number;
+                amount: number;
+              },
+          ),
           address,
-          l1GasPrice: "10",
-          l1JsonRpc: "https://eth.llamarpc.com",
-        }),
-      });
+          false,
+        );
+        setRawData(JSON.stringify(l2ClaimData));
+      } else if (command === "generate-l1-contract-claim-tx") {
+        if (!l1GasPrice) {
+          setError("Missing required parameter: l1GasPrice");
+          return;
+        }
+        const gasPrice = parseUnits(l1GasPrice, "gwei").toString();
+        const l1Provider = l1JsonRpc
+          ? new JsonRpcProvider(l1JsonRpc)
+          : getDefaultProvider("mainnet");
 
-      if (!result.ok) {
-        alert("Address is not eligible for the airdrop");
-        return;
+        const aliasedAddress = utils.applyL1ToL2Alias(address);
+        const l2ClaimData = await getL2ClaimData(
+          tree,
+          leavesBuffs.map(
+            (buff) =>
+              ({
+                hashBuffer: buff.hashBuffer,
+                address: buff.address,
+                index: buff.index,
+                amount: buff.amount,
+              }) as unknown as {
+                hashBuffer: Buffer;
+                address: string;
+                index: number;
+                amount: number;
+              },
+          ),
+          aliasedAddress,
+          true,
+        );
+
+        if (!l2ClaimData.call_to_claim) {
+          setError("No claim found for the provided address");
+          return;
+        }
+
+        const l1TxData = await getL1TxInfo(
+          l1Provider,
+          l2ClaimData.call_to_claim.to,
+          l2ClaimData.call_to_claim.l2_raw_calldata,
+          otherRecipient ? refundRecipient : address,
+          gasPrice,
+        );
+        const finalData = {
+          address,
+          call_to_claim: l1TxData,
+        };
+        console.log(finalData);
+        setRawData(finalData);
+        setCallData(
+          finalData.call_to_claim as unknown as {
+            function: string;
+            gas_price: string;
+            l1_raw_calldata: string;
+            value: string;
+            params: CallData;
+          },
+        );
+      } else {
+        setError("Invalid command");
       }
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const data = await result.json();
-      setRawData(data as unknown as Record<string, unknown>);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-      setCallData(data?.call_to_claim);
-      setEligibilityMessage("Address is eligible for the airdrop");
-      console.log(data);
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      setError((err as Error)?.message ?? "Internal Server Error");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-500 px-4 py-8">
@@ -125,20 +213,55 @@ export default function Component() {
           <p className="mb-8 text-center text-gray-600">
             Enter your Ethereum address below to claim your airdrop.
           </p>
-          <form onSubmit={handleCheckEligibility}>
-            <div className="mb-6 flex items-center">
+          <form onSubmit={handleGenerateClaimData}>
+            <div className="mb-6 flex w-full flex-col items-end gap-4">
               <Input
                 type="text"
                 placeholder="Enter your Ethereum address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="flex-1 rounded-l-md border-r-0 focus:border-indigo-500 focus:ring-indigo-500"
+                className="min-h-10 rounded-l-md border-r-0 px-4 py-2 focus:border-indigo-500 focus:ring-indigo-500"
               />
-              <Button disabled={loading} type="submit" className="rounded-r-md">
-                Check Eligibility
+              {/* checkbox to enable/disable otherRecipient */}
+              <div className="mb-4 flex w-full flex-col items-start gap-2">
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="checkbox"
+                    id="otherRecipient"
+                    name="otherRecipient"
+                    className="h-4 w-4 "
+                    onChange={(e) => setOtherRecipient(e.target.checked)}
+                  />
+                  <Label htmlFor="otherRecipient">Set recipient</Label>
+                </div>
+                {otherRecipient ? (
+                  <EnsInputField
+                    disabled={false}
+                    rawTokenAddress={refundRecipient}
+                    isValidToAddress={isValidToAddress}
+                    ensAddy={ensAddy as string}
+                    ensAvatar={ensAvatar!}
+                    onChange={handleToAddressInput}
+                  />
+                ) : null}
+              </div>
+              <Input
+                type="text"
+                placeholder="L1 Gas Price"
+                value={l1GasPrice}
+                onChange={(e) => setL1GasPrice(e.target.value)}
+                className="min-h-10 rounded-l-md border-r-0 px-4 py-2 focus:border-indigo-500 focus:ring-indigo-500"
+              />
+              <Button
+                disabled={loading || !l1GasPrice || !address}
+                type="submit"
+                className="rounded-r-md"
+              >
+                Create claim data
               </Button>
             </div>
           </form>
+
           <p className="text-center text-sm text-gray-500">
             By clicking &apos;Claim&apos;, you agree to our{" "}
             <Link
@@ -154,7 +277,7 @@ export default function Component() {
             <p className="text-center text-green-500">{eligibilityMessage}</p>
           )}
         </div>
-        <Tip/>
+        <Tip />
       </div>
       {/* 
 example raw data value:
@@ -215,6 +338,7 @@ value
               </pre>
             </div>
           ))}
+
           <Button onClick={handleClaim}>Claim</Button>
         </div>
       ) : null}

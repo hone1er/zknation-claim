@@ -7,6 +7,7 @@ import {
   base,
   baseSepolia,
   mainnet,
+  optimism,
   polygon,
   polygonAmoy,
 } from "wagmi/chains";
@@ -41,7 +42,7 @@ const chains = [
 //   ssr: true,
 // });
 const config = createConfig({
-  chains,
+  chains: [polygon, base, mainnet, optimism],
   connectors: [
     coinbaseWallet({
       appName: "Honefolio",
@@ -54,11 +55,9 @@ const config = createConfig({
   ssr: true,
   transports: {
     [polygon.id]: http(),
-    [polygonAmoy.id]: http(),
-    [baseSepolia.id]: http(),
+    [optimism.id]: http(),
     [base.id]: http(),
     [mainnet.id]: http(),
-    [arbitrum.id]: http(),
   },
 });
 
