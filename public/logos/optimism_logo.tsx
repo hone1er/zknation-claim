@@ -1,8 +1,8 @@
 export default function OptimismLogo() {
   return (
     <svg
-      width="500"
-      height="500"
+      width="30"
+      height="30"
       viewBox="0 0 500 500"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"

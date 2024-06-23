@@ -1,8 +1,8 @@
 export default function EthereumLogo() {
   return (
     <svg
-      width="500"
-      height="500"
+      width="30"
+      height="30"
       viewBox="-120 -30 500 500"
       version="1.1"
       xmlns="http://www.w3.org/2000/svg"
