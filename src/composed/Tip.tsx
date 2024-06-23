@@ -209,7 +209,7 @@ export function TipDrawer({ className }: { className?: string }) {
         <Button
           size={"sm"}
           variant={"outline"}
-          className={`flex items-center gap-2 ${className}`}
+          className={`flex items-center gap-2 ${className} border border-blue-200`}
         >
           <PointerIcon className="h-5 w-5" />
           <span>Send Tip</span>
