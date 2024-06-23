@@ -232,6 +232,13 @@ export default function Component() {
             to produce the call data for your claim. After generating the claim
             data you will be able to claim your tokens.
           </p>
+          <p className="mb-8 text-center text-gray-600">
+            Specifically made for the miladys and pengus to safely claim from
+            their multisigs to another address{" "}
+            <span className="text-xs">
+              (but other eligible smart contract wallets can use this too!)
+            </span>
+          </p>
         </div>
         <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
           <h1 className="mb-6 text-center text-3xl font-bold">
@@ -298,6 +305,10 @@ export default function Component() {
               >
                 Create claim data
               </Button>
+              <p className="text-xs text-gray-500">
+                UI may become unresponsive while generating claim data. Please
+                allow 1-2 minutes for the data to be generated.
+              </p>
             </div>
             {error ? (
               <p className="mb-4 text-center text-xs text-red-500">{error}</p>
