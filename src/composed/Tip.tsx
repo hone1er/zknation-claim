@@ -151,6 +151,14 @@ export function TipDrawer({ className }: { className?: string }) {
     324: <ZKLogo />,
   };
 
+  const chainTipAddressMap: Record<number, string> = {
+    1: process.env.NEXT_PUBLIC_TIP_MAINNET_ADDRESS ?? "",
+    137: process.env.NEXT_PUBLIC_TIP_POLYGON_ADDRESS ?? "",
+    8453: process.env.NEXT_PUBLIC_TIP_BASE_ADDRESS ?? "",
+    10: process.env.NEXT_PUBLIC_TIP_OPTIMISM_ADDRESS ?? "",
+    324: process.env.NEXT_PUBLIC_TIP_ZK_ADDRESS ?? "",
+  };
+
   const handleTransferERC20 = async (address: `0x${string}`) => {
     try {
       await writeContractAsync(
@@ -159,7 +167,7 @@ export function TipDrawer({ className }: { className?: string }) {
           abi: erc20Abi,
           functionName: "transfer",
           args: [
-            process.env.NEXT_PUBLIC_TIP_ADDRESS as `0x${string}`,
+            chainTipAddressMap[chainId] as `0x${string}`,
             parseEther(amount),
           ],
         },
