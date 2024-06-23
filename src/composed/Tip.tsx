@@ -225,15 +225,25 @@ export function TipDrawer({ className }: { className?: string }) {
               <br />
               This tool was created by
               <a
-                href="https://hey.xyz/u/hone1er"
+                href="https://warpcast.com/hone1er"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-500"
               >
                 {" "}
                 @hone1er
+              </a>{" "}
+              and{" "}
+              <a
+                href="https://warpcast.com/alec.eth"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500"
+              >
+                {" "}
+                @alec.eth
               </a>
-              ! Follow on hey.xyz or any Lens app for more updates. 🚀
+              ! Follow on Warpcaster or any Farcaster app for more updates 🚀
             </DrawerDescription>
           </DrawerHeader>
           <div className="flex max-w-sm flex-col gap-6 p-4">
