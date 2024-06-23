@@ -38,7 +38,6 @@ export default function Component() {
   const [rawData, setRawData] = useState({});
   const [otherRecipient, setOtherRecipient] = useState(false);
   const { data: l1GasPrice } = useGasPrice({ chainId: 1 });
-
   const [command, setCommand] = useState("generate-l1-contract-claim-tx");
 
   const [l1JsonRpc, setL1JsonRpc] = useState("https://eth.llamarpc.com");
@@ -215,23 +214,50 @@ export default function Component() {
         {" "}
         <ConnectWallet />
         <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
+          {/* https://github.com/ZKsync-Association/zknation-data/blob/main/README.md */}
+          <h1 className="mb-6 text-center text-3xl font-bold">
+            ZK Claim Helper
+          </h1>
+
+          <p className="mb-8 text-center text-gray-600">
+            This UI was built to make claiming $ZK tokens from an L1 smart
+            contract easier. Functionality follows this{" "}
+            <a
+              href="https://github.com/ZKsync-Association/zknation-data/blob/main/README.md#l1-smart-contracts-addresses"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-500 hover:underline"
+            >
+              ZKsync Association repository
+            </a>{" "}
+            to produce the call data for your claim
+          </p>
+        </div>
+        <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
           <h1 className="mb-6 text-center text-3xl font-bold">
             Claim Your Airdrop
           </h1>
           <p className="mb-8 text-center text-gray-600">
-            Enter your Ethereum address below to claim your airdrop.
+            Enter your L1 Ethereum address below to claim your airdrop
           </p>
           <form onSubmit={handleGenerateClaimData}>
-            <div className="mb-6 flex w-full flex-col items-end gap-4">
-              <EnsInputField
-                disabled={false}
-                placeholder="Eligibility Address"
-                rawTokenAddress={address}
-                isValidToAddress={isValidEligibilityAddress}
-                ensAddy={ensEligibilityAddy as string}
-                ensAvatar={ensEligibilityAvatar!}
-                onChange={handleEligibilityToAddressInput}
-              />
+            <div className="mb-6 flex w-full flex-col items-end gap-6">
+              <div>
+                <EnsInputField
+                  disabled={false}
+                  placeholder="Eligibility Address"
+                  rawTokenAddress={address}
+                  isValidToAddress={isValidEligibilityAddress}
+                  ensAddy={ensEligibilityAddy as string}
+                  ensAvatar={ensEligibilityAvatar!}
+                  onChange={handleEligibilityToAddressInput}
+                />
+                <p className="text-xs text-gray-500">
+                  If you have not deployed a smart contract wallet with the same
+                  address on ZKsync, please enter an address that you own on
+                  ZKsync as the recipient.
+                </p>
+              </div>
               {/* checkbox to enable/disable otherRecipient */}
               <div className="mb-4 flex w-full flex-col items-start gap-2">
                 <div className="flex items-center gap-2">
@@ -239,6 +265,7 @@ export default function Component() {
                     type="checkbox"
                     id="otherRecipient"
                     name="otherRecipient"
+                    checked={otherRecipient}
                     className="h-4 w-4 "
                     onChange={(e) => setOtherRecipient(e.target.checked)}
                   />
@@ -258,7 +285,13 @@ export default function Component() {
               </div>
 
               <Button
-                disabled={loading || !l1GasPrice || !address}
+                disabled={
+                  loading ||
+                  !l1GasPrice ||
+                  !address ||
+                  !isValidEligibilityAddress ||
+                  (otherRecipient && !isValidToAddress)
+                }
                 type="submit"
                 className="rounded-r-md"
               >
