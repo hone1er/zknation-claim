@@ -1,4 +1,5 @@
-export const BRIDGE_HUB_ABI = [
+import { narrow } from "abitype";
+export const BRIDGE_HUB_ABI = narrow([
   {
     inputs: [],
     stateMutability: "nonpayable",
@@ -816,4 +817,4 @@ export const BRIDGE_HUB_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
-];
+] as const);

@@ -9,7 +9,7 @@ import { Tip } from "@/composed/Tip";
 import EnsInputField from "@/composed/EnsInputField";
 import { useEns } from "@/hooks/useEns";
 import { Label } from "@/components/ui/label";
-import { getDefaultProvider, JsonRpcProvider } from "ethers";
+import { getDefaultProvider, JsonRpcProvider, toBigInt } from "ethers";
 import { utils } from "zksync-ethers";
 import {
   constructMerkleTree,
@@ -73,20 +73,21 @@ export default function Component() {
       {
         address: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
         abi: BRIDGE_HUB_ABI,
-        functionName: callData.function,
+        functionName: callData.function as "requestL2TransactionDirect",
         args: [
           {
-            chainId: Number(callData.params.chainId),
-            mintValue: Number(callData.params.mintValue),
-            l2Contract: callData.params.l2Contract,
-            l2Value: Number(callData.params.l2Value),
-            l2Calldata: callData.params.l2Calldata,
-            l2GasLimit: callData.params.l2GasLimit,
-            l2GasPerPubdataByteLimit: Number(
+            chainId: BigInt(callData.params.chainId),
+            mintValue: BigInt(callData.params.mintValue),
+            l2Contract: callData.params.l2Contract as `0x${string}`,
+            l2Value: BigInt(callData.params.l2Value),
+            l2Calldata: callData.params.l2Calldata as `0x${string}`,
+            l2GasLimit: BigInt(callData.params.l2GasLimit),
+            l2GasPerPubdataByteLimit: BigInt(
               callData.params.l2GasPerPubdataByteLimit,
             ),
-            factoryDeps: callData.params.factoryDeps,
-            refundRecipient: callData.params.refundRecipient,
+            factoryDeps: callData.params
+              .factoryDeps as readonly `0x${string}`[],
+            refundRecipient: callData.params.refundRecipient as `0x${string}`,
           },
         ],
         value: BigInt(callData.value),
@@ -145,7 +146,7 @@ export default function Component() {
           setError("Missing required parameter: l1GasPrice");
           return;
         }
-        const gasPrice = (l1GasPrice).toString();
+        const gasPrice = l1GasPrice.toString();
 
         const l1Provider = l1JsonRpc
           ? new JsonRpcProvider(l1JsonRpc)
