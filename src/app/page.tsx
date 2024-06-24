@@ -76,13 +76,15 @@ export default function Component() {
         functionName: callData.function,
         args: [
           {
-            chainId: callData.params.chainId,
-            mintValue: callData.params.mintValue,
+            chainId: Number(callData.params.chainId),
+            mintValue: Number(callData.params.mintValue),
             l2Contract: callData.params.l2Contract,
-            l2Value: callData.params.l2Value,
+            l2Value: Number(callData.params.l2Value),
             l2Calldata: callData.params.l2Calldata,
             l2GasLimit: callData.params.l2GasLimit,
-            l2GasPerPubdataByteLimit: callData.params.l2GasPerPubdataByteLimit,
+            l2GasPerPubdataByteLimit: Number(
+              callData.params.l2GasPerPubdataByteLimit,
+            ),
             factoryDeps: callData.params.factoryDeps,
             refundRecipient: callData.params.refundRecipient,
           },
