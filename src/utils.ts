@@ -14,18 +14,38 @@ import {
   L1_BRIDGE_HUB_ADDRESS,
   L2_MERKLE_DISTRIBUTOR_ADDRESS,
   L2_MERKLE_DISTRIBUTOR_INTERFACE,
+  L2_ZK_TOKEN_ADDRESS,
   REQUIRED_L2_GAS_PRICE_PER_PUBDATA,
   ZKSYNC_ERA_CHAIN_ID,
 } from "./contants";
 import { BRIDGEHUB_ABI } from "zksync-ethers/build/utils";
 import { type BigNumberish } from "ethers";
 import { utils } from "zksync-ethers";
+import { erc20Abi } from "viem";
 
 export async function readCSVFromUrl(url: string): Promise<string[][]> {
   const response = await fetch(url);
   const data = await response.text();
 
   return parse(data, { columns: false });
+}
+
+export async function getL2TransferData(to: string, amount: string) {
+  const ERC20_INTERFACE = new ethers.Interface(erc20Abi);
+  return {
+    call_to_transfer: {
+      to: L2_ZK_TOKEN_ADDRESS,
+      function: "transfer",
+      params: {
+        to,
+        amount,
+      },
+      l2_raw_calldata: ERC20_INTERFACE.encodeFunctionData("transfer", [
+        to,
+        amount,
+      ]),
+    },
+  };
 }
 
 export async function getL2ClaimData(
@@ -95,13 +115,15 @@ export async function getL1TxInfo(
     BRIDGEHUB_ABI,
     l1Provider,
   );
-  if (!bridgeHub.l2TransactionBaseCost) return;
+  if (!bridgeHub ?? !bridgeHub.l2TransactionBaseCost) return;
+
   const neededValue = (await bridgeHub.l2TransactionBaseCost(
     ZKSYNC_ERA_CHAIN_ID,
     gasPrice,
     DEFAULT_L2_TX_GAS_LIMIT,
     REQUIRED_L2_GAS_PRICE_PER_PUBDATA,
-  )) as string;
+  )) as unknown as number;
+
   const params = {
     chainId: ZKSYNC_ERA_CHAIN_ID,
     mintValue: neededValue.toString(),
@@ -117,6 +139,7 @@ export async function getL1TxInfo(
     "requestL2TransactionDirect",
     [params],
   );
+
   return {
     to: L1_BRIDGE_HUB_ADDRESS,
     function: "requestL2TransactionDirect",

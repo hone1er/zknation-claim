@@ -11,3 +11,4 @@ export const L2_MERKLE_DISTRIBUTOR_ADDRESS =
 export const ZKSYNC_ERA_CHAIN_ID = 324;
 export const DEFAULT_L2_TX_GAS_LIMIT = 2097152;
 export const REQUIRED_L2_GAS_PRICE_PER_PUBDATA = 800;
+export const L2_ZK_TOKEN_ADDRESS = "0x5a7d6b2f92c77fad6ccabd7ee0624e64907eaf3e";

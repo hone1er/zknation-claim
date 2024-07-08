@@ -4,19 +4,22 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAccount, useGasPrice, useWriteContract } from "wagmi";
 import { Account, WalletOptions } from "@/composed/Connect";
-import { BRIDGE_HUB_ABI } from "public/abi/BRIDGE_HUB_ABI";
+
 import { Tip } from "@/composed/Tip";
 import EnsInputField from "@/composed/EnsInputField";
 import { useEns } from "@/hooks/useEns";
 import { Label } from "@/components/ui/label";
-import { getDefaultProvider, JsonRpcProvider, toBigInt } from "ethers";
+import { getDefaultProvider, JsonRpcProvider } from "ethers";
 import { utils } from "zksync-ethers";
+
 import {
   constructMerkleTree,
   getL1TxInfo,
   getL2ClaimData,
+  getL2TransferData,
   readCSVFromUrl,
 } from "@/utils";
+import { BRIDGE_HUB_ABI } from "public/abi/BRIDGE_HUB_ABI";
 
 interface CallData {
   payableAmount: string; // ether
@@ -68,29 +71,55 @@ export default function Component() {
 
   async function handleClaim() {
     if (!callData) return;
+    if (!l1GasPrice) {
+      setError("Missing required parameter: l1GasPrice");
+      return;
+    }
+    const l2TransferData = await getL2TransferData(
+      address,
+      callData.params.mintValue,
+    );
+    const gasPrice = l1GasPrice.toString();
 
+    const l1Provider = l1JsonRpc
+      ? new JsonRpcProvider(l1JsonRpc)
+      : getDefaultProvider("mainnet");
+
+    const l1TxData = (await getL1TxInfo(
+      l1Provider,
+      l2TransferData.call_to_transfer.to,
+      l2TransferData.call_to_transfer.l2_raw_calldata,
+      address,
+      gasPrice,
+    )) as unknown as {
+      function: string;
+      gas_price: string;
+      l1_raw_calldata: string;
+      value: string;
+      params: CallData;
+    };
     const result = await writeContractAsync(
       {
         address: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
         abi: BRIDGE_HUB_ABI,
-        functionName: callData.function as "requestL2TransactionDirect",
+        functionName: l1TxData.function as "requestL2TransactionDirect",
         args: [
           {
-            chainId: BigInt(callData.params.chainId),
-            mintValue: BigInt(callData.params.mintValue),
-            l2Contract: callData.params.l2Contract as `0x${string}`,
-            l2Value: BigInt(callData.params.l2Value),
-            l2Calldata: callData.params.l2Calldata as `0x${string}`,
-            l2GasLimit: BigInt(callData.params.l2GasLimit),
+            chainId: BigInt(l1TxData.params.chainId),
+            mintValue: BigInt(l1TxData.params.mintValue),
+            l2Contract: l1TxData.params.l2Contract as `0x${string}`,
+            l2Value: BigInt(l1TxData.params.l2Value),
+            l2Calldata: l1TxData.params.l2Calldata as `0x${string}`,
+            l2GasLimit: BigInt(l1TxData.params.l2GasLimit),
             l2GasPerPubdataByteLimit: BigInt(
-              callData.params.l2GasPerPubdataByteLimit,
+              l1TxData.params.l2GasPerPubdataByteLimit,
             ),
-            factoryDeps: callData.params
+            factoryDeps: l1TxData.params
               .factoryDeps as readonly `0x${string}`[],
-            refundRecipient: callData.params.refundRecipient as `0x${string}`,
+            refundRecipient: l1TxData.params.refundRecipient as `0x${string}`,
           },
         ],
-        value: BigInt(callData.value),
+        value: BigInt(l1TxData.value),
       },
       {
         onSuccess: (hash: string) => {
@@ -178,13 +207,20 @@ export default function Component() {
           return;
         }
 
-        const l1TxData = await getL1TxInfo(
+        const l1TxData = (await getL1TxInfo(
           l1Provider,
           l2ClaimData.call_to_claim.to,
           l2ClaimData.call_to_claim.l2_raw_calldata,
           otherRecipient ? refundRecipient : address,
           gasPrice,
-        );
+        )) as unknown as {
+          function: string;
+          gas_price: string;
+          l1_raw_calldata: string;
+          value: string;
+          params: CallData;
+        };
+
         const finalData = {
           address,
           call_to_claim: l1TxData,
