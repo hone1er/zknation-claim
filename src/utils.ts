@@ -30,6 +30,30 @@ export async function readCSVFromUrl(url: string): Promise<string[][]> {
   return parse(data, { columns: false });
 }
 
+export async function readAllocationsAndL1EligibilityLists(
+  allEligiblePath: string[],
+  l1EligiblePath: string[],
+  l2MerkleDistributorAddresses: string[],
+): Promise<Allocation[]> {
+  const result = [] as Allocation[];
+  if (
+    allEligiblePath.length !== l1EligiblePath.length ||
+    l1EligiblePath.length !== l2MerkleDistributorAddresses.length
+  ) {
+    throw new Error(
+      "Mismatch between the number of eligibility lists and the L1 addresses list!",
+    );
+  }
+  for (let i = 0; i < allEligiblePath.length; ++i) {
+    result.push({
+      allEligible: await readCSVFromUrl(allEligiblePath[i]!),
+      l1Eligible: await readCSVFromUrl(l1EligiblePath[i]!),
+      l2MerkleDistributorAddress: l2MerkleDistributorAddresses[i]!,
+    });
+  }
+  return result;
+}
+
 export async function getL2TransferData(to: string, amount: string) {
   const ERC20_INTERFACE = new ethers.Interface(erc20Abi);
   return {
@@ -47,18 +71,16 @@ export async function getL2TransferData(to: string, amount: string) {
     },
   };
 }
-
-export async function getL2ClaimData(
-  tree: MerkleTree,
-  leaves: {
-    hashBuffer: Buffer;
-    address: string;
-    index: number;
-    amount: number;
-  }[],
-  address: string,
-  isL1: boolean,
-) {
+export interface Allocation {
+  allEligible: string[][];
+  l1Eligible: string[][];
+  l2MerkleDistributorAddress: string;
+}
+function getOneL2ClaimData(allocation: Allocation, address: string) {
+  const { leaves, tree } = constructMerkleTree(
+    allocation.allEligible,
+    allocation.l1Eligible,
+  );
   let found = false;
   let leaf:
     | {
@@ -69,38 +91,69 @@ export async function getL2ClaimData(
       }
     | undefined;
 
-  for (const l of leaves) {
-    if (l.address.toLowerCase() == address.toLowerCase()) {
+  for (let i = 0; i < leaves.length; i++) {
+    if (leaves[i]?.address?.toLowerCase() == address.toLowerCase()) {
+      leaf = leaves[i] as unknown as {
+        hashBuffer: Buffer;
+        address: string;
+        index: number;
+        amount: number;
+      };
       found = true;
-      leaf = l;
       break;
     }
   }
 
   if (!found) {
+    return null;
+  }
+  if (!leaf) {
+    return null;
+  }
+
+  const merkleProof = tree.getHexProof(leaf.hashBuffer);
+  return {
+    address: leaf.address,
+    call_to_claim: {
+      to: allocation.l2MerkleDistributorAddress,
+      function: "claim",
+      params: {
+        index: leaf.index,
+        amount: leaf.amount,
+        merkle_proof: merkleProof,
+      },
+      l2_raw_calldata: L2_MERKLE_DISTRIBUTOR_INTERFACE.encodeFunctionData(
+        "claim",
+        [leaf.index, leaf.amount, merkleProof],
+      ),
+    },
+  };
+}
+
+export async function getL2ClaimData(
+  allocations: Allocation[],
+  address: string,
+  isL1: boolean,
+) {
+  const claimCalldatas = {
+    address,
+    // eslint-disable-next-line @typescript-eslint/no-array-constructor
+    calls_to_claim: new Array(),
+  };
+  for (let i = 0; i < allocations.length; ++i) {
+    const claimCalldata = getOneL2ClaimData(allocations[i]!, address);
+    if (claimCalldata) {
+      claimCalldatas.calls_to_claim.push(claimCalldata.call_to_claim);
+    }
+  }
+
+  if (claimCalldatas.calls_to_claim.length == 0) {
     throw new Error(
       `${isL1 ? utils.undoL1ToL2Alias(address) : address} address is not eligible`,
     );
   }
 
-  const merkleProof = tree.getHexProof(leaf!.hashBuffer as string | Buffer); //   const merkleProof = tree.getHexProof(leaf.hashBuffer);
-
-  return {
-    address: leaf?.address,
-    call_to_claim: {
-      to: L2_MERKLE_DISTRIBUTOR_ADDRESS,
-      function: "claim",
-      params: {
-        index: leaf?.index,
-        amount: leaf?.amount,
-        merkle_proof: merkleProof,
-      },
-      l2_raw_calldata: L2_MERKLE_DISTRIBUTOR_INTERFACE.encodeFunctionData(
-        "claim",
-        [leaf?.index, leaf?.amount, merkleProof],
-      ),
-    },
-  };
+  return claimCalldatas;
 }
 
 export async function getL1TxInfo(
@@ -115,6 +168,7 @@ export async function getL1TxInfo(
     BRIDGEHUB_ABI,
     l1Provider,
   );
+
   if (!bridgeHub ?? !bridgeHub.l2TransactionBaseCost) return;
 
   const neededValue = (await bridgeHub.l2TransactionBaseCost(
@@ -123,7 +177,7 @@ export async function getL1TxInfo(
     DEFAULT_L2_TX_GAS_LIMIT,
     REQUIRED_L2_GAS_PRICE_PER_PUBDATA,
   )) as unknown as number;
-
+  console.log("🚀 ~ neededValue:", neededValue);
   const params = {
     chainId: ZKSYNC_ERA_CHAIN_ID,
     mintValue: neededValue.toString(),
@@ -167,6 +221,9 @@ export function constructMerkleTree(
   }
 
   const leaves = addresses.map((allocation, i) => ({
+    address: allocation[0],
+    amount: allocation[1],
+    index: i,
     hashBuffer: Buffer.from(
       solidityPackedKeccak256(
         ["uint256", "address", "uint256"],
@@ -174,9 +231,6 @@ export function constructMerkleTree(
       ).replace("0x", ""),
       "hex",
     ),
-    address: allocation[0],
-    index: i,
-    amount: allocation[1],
   }));
 
   const leavesBuffs = leaves.sort((a, b) =>
@@ -188,5 +242,5 @@ export function constructMerkleTree(
     { sortPairs: true },
   );
 
-  return { leavesBuffs, tree };
+  return { leaves: leavesBuffs, tree };
 }

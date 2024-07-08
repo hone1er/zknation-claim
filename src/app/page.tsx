@@ -13,13 +13,17 @@ import { getDefaultProvider, JsonRpcProvider } from "ethers";
 import { utils } from "zksync-ethers";
 
 import {
-  constructMerkleTree,
   getL1TxInfo,
   getL2ClaimData,
   getL2TransferData,
-  readCSVFromUrl,
+  readAllocationsAndL1EligibilityLists,
 } from "@/utils";
 import { BRIDGE_HUB_ABI } from "public/abi/BRIDGE_HUB_ABI";
+import {
+  ALL_ADDRESSES_ALLOCATION_PATHES,
+  L1_ADDRESSES_ALLOCATION_PATHES,
+  L2_MERKLE_DISTRIBUTOR_ADDRESSES,
+} from "@/contants";
 
 interface CallData {
   payableAmount: string; // ether
@@ -118,37 +122,13 @@ export default function Component() {
     setEligibilityMessage("");
     setLoading(true);
     try {
-      const allocation = await readCSVFromUrl("/airdrop-allocations.csv");
-      const l1EligibilityList = await readCSVFromUrl(
-        "/l1_eligibility_list.csv",
-      );
-      const { leavesBuffs, tree } = constructMerkleTree(
-        allocation,
-        l1EligibilityList,
+      const allocations = await readAllocationsAndL1EligibilityLists(
+        ALL_ADDRESSES_ALLOCATION_PATHES,
+        L1_ADDRESSES_ALLOCATION_PATHES,
+        L2_MERKLE_DISTRIBUTOR_ADDRESSES,
       );
 
-      if (command === "generate-l2-contract-claim-tx") {
-        const l2ClaimData = getL2ClaimData(
-          tree,
-          leavesBuffs.map(
-            (buff) =>
-              ({
-                hashBuffer: buff.hashBuffer,
-                address: buff.address,
-                index: buff.index,
-                amount: buff.amount,
-              }) as unknown as {
-                hashBuffer: Buffer;
-                address: string;
-                index: number;
-                amount: number;
-              },
-          ),
-          address,
-          false,
-        );
-        setRawData(JSON.stringify(l2ClaimData));
-      } else if (command === "generate-l1-contract-claim-tx") {
+      if (command === "generate-l1-contract-claim-tx") {
         if (!l1GasPrice) {
           setError("Missing required parameter: l1GasPrice");
           return;
@@ -161,33 +141,20 @@ export default function Component() {
 
         const aliasedAddress = utils.applyL1ToL2Alias(address);
         const l2ClaimData = await getL2ClaimData(
-          tree,
-          leavesBuffs.map(
-            (buff) =>
-              ({
-                hashBuffer: buff.hashBuffer,
-                address: buff.address,
-                index: buff.index,
-                amount: buff.amount,
-              }) as unknown as {
-                hashBuffer: Buffer;
-                address: string;
-                index: number;
-                amount: number;
-              },
-          ),
+          allocations,
           aliasedAddress,
           true,
         );
 
-        if (!l2ClaimData.call_to_claim) {
+        if (!l2ClaimData?.calls_to_claim) {
           setError("No claim found for the provided address");
           return;
         }
 
         const l2TransferData = await getL2TransferData(
           otherRecipient ? refundRecipient : address,
-          l2ClaimData.call_to_claim.params.amount!.toString(),
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+          l2ClaimData.calls_to_claim[0].params.amount!.toString(),
         );
         const l1TxData = (await getL1TxInfo(
           l1Provider,
