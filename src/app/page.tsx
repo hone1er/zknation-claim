@@ -75,51 +75,29 @@ export default function Component() {
       setError("Missing required parameter: l1GasPrice");
       return;
     }
-    const l2TransferData = await getL2TransferData(
-      address,
-      callData.params.mintValue,
-    );
-    const gasPrice = l1GasPrice.toString();
 
-    const l1Provider = l1JsonRpc
-      ? new JsonRpcProvider(l1JsonRpc)
-      : getDefaultProvider("mainnet");
-
-    const l1TxData = (await getL1TxInfo(
-      l1Provider,
-      l2TransferData.call_to_transfer.to,
-      l2TransferData.call_to_transfer.l2_raw_calldata,
-      address,
-      gasPrice,
-    )) as unknown as {
-      function: string;
-      gas_price: string;
-      l1_raw_calldata: string;
-      value: string;
-      params: CallData;
-    };
     const result = await writeContractAsync(
       {
         address: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
         abi: BRIDGE_HUB_ABI,
-        functionName: l1TxData.function as "requestL2TransactionDirect",
+        functionName: callData.function as "requestL2TransactionDirect",
         args: [
           {
-            chainId: BigInt(l1TxData.params.chainId),
-            mintValue: BigInt(l1TxData.params.mintValue),
-            l2Contract: l1TxData.params.l2Contract as `0x${string}`,
-            l2Value: BigInt(l1TxData.params.l2Value),
-            l2Calldata: l1TxData.params.l2Calldata as `0x${string}`,
-            l2GasLimit: BigInt(l1TxData.params.l2GasLimit),
+            chainId: BigInt(callData.params.chainId),
+            mintValue: BigInt(callData.params.mintValue),
+            l2Contract: callData.params.l2Contract as `0x${string}`,
+            l2Value: BigInt(callData.params.l2Value),
+            l2Calldata: callData.params.l2Calldata as `0x${string}`,
+            l2GasLimit: BigInt(callData.params.l2GasLimit),
             l2GasPerPubdataByteLimit: BigInt(
-              l1TxData.params.l2GasPerPubdataByteLimit,
+              callData.params.l2GasPerPubdataByteLimit,
             ),
-            factoryDeps: l1TxData.params
+            factoryDeps: callData.params
               .factoryDeps as readonly `0x${string}`[],
-            refundRecipient: l1TxData.params.refundRecipient as `0x${string}`,
+            refundRecipient: callData.params.refundRecipient as `0x${string}`,
           },
         ],
-        value: BigInt(l1TxData.value),
+        value: BigInt(callData.value),
       },
       {
         onSuccess: (hash: string) => {
@@ -207,11 +185,15 @@ export default function Component() {
           return;
         }
 
+        const l2TransferData = await getL2TransferData(
+          address,
+          l2ClaimData.call_to_claim.params.amount!.toString(),
+        );
         const l1TxData = (await getL1TxInfo(
           l1Provider,
-          l2ClaimData.call_to_claim.to,
-          l2ClaimData.call_to_claim.l2_raw_calldata,
-          otherRecipient ? refundRecipient : address,
+          l2TransferData.call_to_transfer.to,
+          l2TransferData.call_to_transfer.l2_raw_calldata,
+          address,
           gasPrice,
         )) as unknown as {
           function: string;
@@ -220,7 +202,6 @@ export default function Component() {
           value: string;
           params: CallData;
         };
-
         const finalData = {
           address,
           call_to_claim: l1TxData,
