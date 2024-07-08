@@ -186,14 +186,14 @@ export default function Component() {
         }
 
         const l2TransferData = await getL2TransferData(
-          address,
+          otherRecipient ? refundRecipient : address,
           l2ClaimData.call_to_claim.params.amount!.toString(),
         );
         const l1TxData = (await getL1TxInfo(
           l1Provider,
           l2TransferData.call_to_transfer.to,
           l2TransferData.call_to_transfer.l2_raw_calldata,
-          address,
+          otherRecipient ? refundRecipient : address,
           gasPrice,
         )) as unknown as {
           function: string;
