@@ -21,7 +21,7 @@ import {
 import { BRIDGEHUB_ABI } from "zksync-ethers/build/utils";
 import { type BigNumberish } from "ethers";
 import { utils } from "zksync-ethers";
-import { erc20Abi } from "viem";
+import { erc20Abi, isAddress } from "viem";
 
 export async function readCSVFromUrl(url: string): Promise<string[][]> {
   const response = await fetch(url);
@@ -220,18 +220,30 @@ export function constructMerkleTree(
     }
   }
 
-  const leaves = addresses.map((allocation, i) => ({
-    address: allocation[0],
-    amount: allocation[1],
-    index: i,
-    hashBuffer: Buffer.from(
-      solidityPackedKeccak256(
-        ["uint256", "address", "uint256"],
-        [i, allocation[0], allocation[1]],
-      ).replace("0x", ""),
-      "hex",
-    ),
-  }));
+  const leaves = addresses
+    .map((allocation, i) => {
+      if (allocation[0] && isAddress(allocation[0])) {
+        return {
+          address: allocation[0],
+          amount: allocation[1],
+          index: i,
+          hashBuffer: Buffer.from(
+            solidityPackedKeccak256(
+              ["uint256", "address", "uint256"],
+              [i, allocation[0], allocation[1]],
+            ).replace("0x", ""),
+            "hex",
+          ),
+        };
+      }
+      return null;
+    })
+    .filter((allocation) => allocation !== null) as {
+    address: string;
+    amount: string;
+    index: number;
+    hashBuffer: Buffer;
+  }[];
 
   const leavesBuffs = leaves.sort((a, b) =>
     Buffer.compare(a.hashBuffer, b.hashBuffer),
