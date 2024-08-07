@@ -9,7 +9,12 @@ import { Tip } from "@/composed/Tip";
 import EnsInputField from "@/composed/EnsInputField";
 import { useEns } from "@/hooks/useEns";
 import { Label } from "@/components/ui/label";
-import { getDefaultProvider, JsonRpcProvider } from "ethers";
+import {
+  BigNumberish,
+  ethers,
+  getDefaultProvider,
+  JsonRpcProvider,
+} from "ethers";
 import { utils } from "zksync-ethers";
 
 import {
@@ -24,10 +29,9 @@ import {
   L1_ADDRESSES_ALLOCATION_PATHES,
   L2_MERKLE_DISTRIBUTOR_ADDRESSES,
 } from "@/contants";
+import { zeroAddress } from "viem";
 
 interface CallData {
-  payableAmount: string; // ether
-
   chainId: number;
   mintValue: string;
   l2Contract: string;
@@ -35,7 +39,7 @@ interface CallData {
   l2Calldata: string;
   l2GasLimit: number;
   l2GasPerPubdataByteLimit: number;
-  factoryDeps: string[];
+  factoryDeps: string[] | never[];
   refundRecipient: string;
 }
 
@@ -45,13 +49,12 @@ export default function Component() {
   const [rawData, setRawData] = useState({});
   const [otherRecipient, setOtherRecipient] = useState(false);
   const { data: l1GasPrice } = useGasPrice({ chainId: 1 });
-  const [command, setCommand] = useState("generate-l1-contract-claim-tx");
 
   const [l1JsonRpc, setL1JsonRpc] = useState("https://eth.llamarpc.com");
   const [error, setError] = useState("");
   const [callData, setCallData] = useState<{
     function: string;
-    gas_price: string;
+    gas_price: BigNumberish | string;
     l1_raw_calldata: string;
     value: string;
     params: CallData;
@@ -79,6 +82,7 @@ export default function Component() {
       setError("Missing required parameter: l1GasPrice");
       return;
     }
+    console.log("🚀 ~ handleClaim ~ callData:", callData);
 
     const result = await writeContractAsync(
       {
@@ -112,6 +116,7 @@ export default function Component() {
         },
       },
     );
+    console.log("🚀 ~ handleClaim ~ result:", result);
   }
 
   const handleGenerateClaimData = async (
@@ -128,68 +133,110 @@ export default function Component() {
         L2_MERKLE_DISTRIBUTOR_ADDRESSES,
       );
 
-      if (command === "generate-l1-contract-claim-tx") {
-        if (!l1GasPrice) {
-          setError("Missing required parameter: l1GasPrice");
-          return;
-        }
-        const gasPrice = l1GasPrice.toString();
+      if (!l1GasPrice) {
+        setError("Missing required parameter: l1GasPrice");
+        return;
+      }
+      const gasPrice = l1GasPrice.toString();
 
-        const l1Provider = l1JsonRpc
-          ? new JsonRpcProvider(l1JsonRpc)
-          : getDefaultProvider("mainnet");
+      const l1Provider = l1JsonRpc
+        ? new JsonRpcProvider(l1JsonRpc)
+        : getDefaultProvider("mainnet");
 
-        const aliasedAddress = utils.applyL1ToL2Alias(address);
-        const l2ClaimData = await getL2ClaimData(
-          allocations,
-          aliasedAddress,
-          true,
-        );
+      const aliasedAddress = utils.applyL1ToL2Alias(address);
+      const l2ClaimData = await getL2ClaimData(
+        allocations,
+        aliasedAddress,
+        true,
+      );
 
-        if (!l2ClaimData?.calls_to_claim) {
-          setError("No claim found for the provided address");
-          return;
-        }
+      if (!l2ClaimData?.calls_to_claim) {
+        setError("No claim found for the provided address");
+        return;
+      }
 
-        const l2TransferData = await getL2TransferData(
-          otherRecipient ? refundRecipient : address,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-          l2ClaimData.calls_to_claim[0].params.amount!.toString(),
-        );
-        const l1TxData = (await getL1TxInfo(
-          l1Provider,
-          l2TransferData.call_to_transfer.to,
-          l2TransferData.call_to_transfer.l2_raw_calldata,
-          otherRecipient ? refundRecipient : address,
-          gasPrice,
-        )) as unknown as {
+      const calls_to_claim = await Promise.all(
+        l2ClaimData.calls_to_claim.map(
+          async (data: {
+            to: string;
+            l2_raw_calldata: string;
+            params: CallData;
+          }) =>
+            await getL1TxInfo(
+              l1Provider,
+              data.to,
+              data.l2_raw_calldata,
+              address,
+              gasPrice,
+            ),
+        ),
+      );
+
+      const finalData = {
+        address,
+        call_to_claim: calls_to_claim[0],
+      };
+
+      setRawData(finalData);
+      setCallData(
+        finalData.call_to_claim as unknown as {
           function: string;
           gas_price: string;
           l1_raw_calldata: string;
           value: string;
           params: CallData;
-        };
-        const finalData = {
-          address,
-          call_to_claim: l1TxData,
-        };
-
-        setRawData(finalData);
-        setCallData(
-          finalData.call_to_claim as unknown as {
-            function: string;
-            gas_price: string;
-            l1_raw_calldata: string;
-            value: string;
-            params: CallData;
-          },
-        );
-        setEligibilityMessage("Eligible for airdrop");
-      } else {
-        setError("Invalid command");
-      }
+        },
+      );
+      setEligibilityMessage("Eligible for airdrop");
     } catch (err) {
       setError((err as Error)?.message ?? "Internal Server Error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateTransferData = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const gasPrice = l1GasPrice ? ethers.formatUnits(l1GasPrice, "gwei") : "";
+      const l1Provider = l1JsonRpc
+        ? new JsonRpcProvider(l1JsonRpc)
+        : getDefaultProvider("mainnet");
+
+      const l2TransferData = await getL2TransferData(
+        refundRecipient,
+        callData?.params.mintValue.toString() ?? "",
+      );
+      const l1TxData = await getL1TxInfo(
+        l1Provider,
+        l2TransferData.call_to_transfer.to,
+        l2TransferData.call_to_transfer.l2_raw_calldata,
+        zeroAddress,
+        gasPrice,
+      );
+
+      const finalData = {
+        refundRecipient,
+        amount: callData?.params.mintValue,
+        l1TxData,
+      };
+
+      setRawData(finalData);
+      if (!l1TxData) {
+        setError("No claim found for the provided address");
+        return;
+      }
+
+      setCallData(l1TxData); // Adjust according to your state variables
+      setEligibilityMessage("Transfer data generated successfully");
+    } catch (err) {
+      console.log("🚀 ~ Component ~ err:", err);
+      setError("Internal Server Error");
     } finally {
       setLoading(false);
     }
@@ -249,34 +296,9 @@ export default function Component() {
                 />
                 <p className="text-xs text-gray-500">
                   If you have not deployed a smart contract wallet with the same
-                  address on ZKsync, please enter an address that you own on
-                  ZKsync as the recipient.
+                  address on ZKsync you will be able to transfer your tokens to
+                  an address you own on ZKsync in the next step.
                 </p>
-              </div>
-              {/* checkbox to enable/disable otherRecipient */}
-              <div className="mb-4 flex w-full flex-col items-start gap-2">
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="checkbox"
-                    id="otherRecipient"
-                    name="otherRecipient"
-                    checked={otherRecipient}
-                    className="h-4 w-4 "
-                    onChange={(e) => setOtherRecipient(e.target.checked)}
-                  />
-                  <Label htmlFor="otherRecipient">Set recipient</Label>
-                </div>
-                {otherRecipient ? (
-                  <EnsInputField
-                    placeholder="Recipient Address"
-                    disabled={false}
-                    rawTokenAddress={refundRecipient}
-                    isValidToAddress={isValidToAddress}
-                    ensAddy={ensAddy as string}
-                    ensAvatar={ensAvatar!}
-                    onChange={handleToAddressInput}
-                  />
-                ) : null}
               </div>
 
               <Button
@@ -284,8 +306,7 @@ export default function Component() {
                   loading ||
                   !l1GasPrice ||
                   !address ||
-                  !isValidEligibilityAddress ||
-                  (otherRecipient && !isValidToAddress)
+                  !isValidEligibilityAddress
                 }
                 type="submit"
                 className="rounded-r-md"
@@ -318,13 +339,59 @@ export default function Component() {
           )}
         </div>
       </div>
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
+        <h1 className="mb-6 text-center text-3xl font-bold">
+          Generate your transfer data
+        </h1>
+        <p className="mb-8 text-center text-gray-600">
+          Enter your eligible L1 Ethereum address below to generate the transfer
+          data for your airdrop.
+        </p>
+        <form onSubmit={handleGenerateTransferData}>
+          <div className="mb-6 flex w-full flex-col items-end gap-6">
+            <div>
+              <EnsInputField
+                placeholder="Recipient Address"
+                disabled={false}
+                rawTokenAddress={refundRecipient}
+                isValidToAddress={isValidToAddress}
+                ensAddy={ensAddy as string}
+                ensAvatar={ensAvatar!}
+                onChange={handleToAddressInput}
+              />
+              <p className="text-xs text-gray-500">
+                If you have not claimed your tokens yet please do so in the
+                previous step. Then enter an address that you own on ZKsync as
+                the recipient and click &apos;Create transfer data&apos;.
+              </p>
+            </div>
+
+            <Button
+              disabled={
+                loading || !l1GasPrice || !address || !isValidEligibilityAddress
+              }
+              type="submit"
+              className="rounded-r-md"
+            >
+              Create transfer data
+            </Button>
+            <p className="text-xs text-gray-500">
+              UI may become unresponsive while generating claim data. Please
+              allow 1-2 minutes for the data to be generated.
+            </p>
+          </div>
+          {error ? (
+            <p className="mb-4 text-center text-xs text-red-500">{error}</p>
+          ) : null}
+        </form>
+      </div>
       <div className="w-full max-w-md justify-start">
         <Tip />
       </div>
       {Object.keys(rawData).length > 0 ? (
         <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
           <h1 className="mb-6 text-center text-3xl font-bold">
-            Claim your ZK tokens
+            {otherRecipient ? "Transfer" : "Claim"} your ZK tokens
           </h1>
           <div className="mt-8 w-full max-w-md rounded-lg bg-white p-8 ">
             <h2 className="mb-6 text-left text-2xl font-semibold">

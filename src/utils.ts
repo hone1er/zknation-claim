@@ -58,7 +58,7 @@ export async function getL2TransferData(to: string, amount: string) {
   const ERC20_INTERFACE = new ethers.Interface(erc20Abi);
   return {
     call_to_transfer: {
-      to: L2_ZK_TOKEN_ADDRESS,
+      to: L2_MERKLE_DISTRIBUTOR_ADDRESS,
       function: "transfer",
       params: {
         to,
@@ -161,7 +161,7 @@ export async function getL1TxInfo(
   to: string,
   l2Calldata: string,
   refundRecipient: string,
-  gasPrice: BigNumberish,
+  gasPrice: BigNumberish | string,
 ) {
   const bridgeHub = new Contract(
     L1_BRIDGE_HUB_ADDRESS,
