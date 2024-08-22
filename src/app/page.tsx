@@ -137,7 +137,7 @@ export default function Component() {
         setError("Missing required parameter: l1GasPrice");
         return;
       }
-      const gasPrice = (l1GasPrice + 5n).toString();
+      const gasPrice = (l1GasPrice + 20n).toString();
 
       const l1Provider = l1JsonRpc
         ? new JsonRpcProvider(l1JsonRpc)
@@ -204,7 +204,7 @@ export default function Component() {
 
     try {
       const gasPrice = l1GasPrice
-        ? ethers.formatUnits(l1GasPrice + 5n, "gwei")
+        ? ethers.formatUnits(l1GasPrice + 20n, "gwei")
         : "";
       const l1Provider = l1JsonRpc
         ? new JsonRpcProvider(l1JsonRpc)
